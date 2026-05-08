@@ -3,289 +3,49 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>วิเคราะห์หวย</title>
+  <title>Lottery Analyzer — หวยลาว & นิเคอิ</title>
+  <meta name="description" content="วิเคราะห์หวยลาวและหุ้นนิเคอิด้วย 10 สูตรสถิติ: Markov Chain, Z-Score, Trend, Digit Sum และอื่นๆ" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@300;400;600;700;900&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet" />
-
-  <style>
-    :root {
-      --bg:        #0a0a0f;
-      --surface:   #12121a;
-      --card:      #1a1a26;
-      --border:    #2a2a3d;
-      --accent:    #f0c040;
-      --accent2:   #e05c5c;
-      --accent3:   #5ce0b0;
-      --text:      #e8e8f0;
-      --muted:     #6b6b88;
-      --radius:    16px;
-      --font-th:   'Noto Sans Thai', sans-serif;
-      --font-mono: 'Space Mono', monospace;
-    }
-
-    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-
-    body {
-      background: var(--bg);
-      color: var(--text);
-      font-family: var(--font-th);
-      min-height: 100vh;
-      overflow-x: hidden;
-    }
-
-    body::before {
-      content: '';
-      position: fixed; inset: 0;
-      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E");
-      pointer-events: none; z-index: 0;
-    }
-
-    body::after {
-      content: '';
-      position: fixed; inset: 0;
-      background-image:
-        linear-gradient(rgba(240,192,64,0.03) 1px, transparent 1px),
-        linear-gradient(90deg, rgba(240,192,64,0.03) 1px, transparent 1px);
-      background-size: 40px 40px;
-      pointer-events: none; z-index: 0;
-    }
-
-    .container {
-      position: relative; z-index: 1;
-      max-width: 560px;
-      margin: 0 auto;
-      padding: 24px 16px 64px;
-    }
-
-    /* ── Header ── */
-    .header {
-      text-align: center;
-      padding: 36px 0 28px;
-      animation: fadeDown 0.6s ease both;
-    }
-    .header-eyebrow {
-      font-family: var(--font-mono);
-      font-size: 11px; letter-spacing: 4px;
-      color: var(--accent); text-transform: uppercase;
-      margin-bottom: 10px; opacity: 0.8;
-    }
-    .header h1 {
-      font-size: clamp(26px, 7vw, 40px);
-      font-weight: 900; line-height: 1.1;
-      background: linear-gradient(135deg, var(--accent) 0%, #fff 60%, var(--accent3) 100%);
-      -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
-    }
-    .header-sub { margin-top: 8px; font-size: 13px; color: var(--muted); font-weight: 300; }
-
-    /* ── Card ── */
-    .card {
-      background: var(--card);
-      border: 1px solid var(--border);
-      border-radius: var(--radius);
-      padding: 22px;
-      margin-bottom: 16px;
-      animation: fadeUp 0.5s ease both;
-    }
-    .card-title {
-      font-size: 12px; font-weight: 600;
-      color: var(--accent); letter-spacing: 2px;
-      text-transform: uppercase; margin-bottom: 14px;
-      font-family: var(--font-mono);
-    }
-
-    /* ── Mode Grid ── */
-    .mode-grid {
-      display: grid;
-      grid-template-columns: repeat(5, 1fr);
-      gap: 8px;
-    }
-    .mode-btn {
-      padding: 14px 4px;
-      background: var(--surface);
-      border: 2px solid var(--border);
-      border-radius: 12px;
-      color: var(--muted);
-      font-family: var(--font-mono);
-      font-size: 20px;
-      font-weight: 700;
-      cursor: pointer;
-      text-align: center;
-      transition: all 0.18s;
-      line-height: 1.1;
-    }
-    .mode-btn small {
-      display: block;
-      font-size: 9px; font-weight: 400;
-      letter-spacing: 0.5px; margin-top: 3px; opacity: 0.7;
-    }
-    .mode-btn:active { transform: scale(0.95); }
-    .mode-btn.active {
-      border-color: var(--accent);
-      background: rgba(240,192,64,0.12);
-      color: var(--accent);
-      box-shadow: 0 0 12px rgba(240,192,64,0.15);
-    }
-
-    /* ── Textarea ── */
-    textarea {
-      width: 100%;
-      min-height: 160px;
-      background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: 10px;
-      color: var(--text);
-      font-family: var(--font-mono);
-      font-size: 18px;
-      line-height: 2;
-      padding: 14px 16px;
-      resize: vertical; outline: none;
-      transition: border-color 0.2s;
-      letter-spacing: 4px;
-    }
-    textarea::placeholder { color: var(--muted); font-size: 13px; letter-spacing: 1px; }
-    textarea:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(240,192,64,0.1); }
-    .input-hint { margin-top: 10px; font-size: 12px; color: var(--muted); line-height: 1.6; }
-
-    /* ── Alert ── */
-    .alert {
-      display: none;
-      background: rgba(224,92,92,0.12);
-      border: 1px solid rgba(224,92,92,0.4);
-      border-radius: 10px; padding: 12px 16px;
-      font-size: 13px; color: var(--accent2);
-      margin-top: 12px; line-height: 1.6;
-    }
-    .alert.show { display: block; animation: shake 0.3s ease; }
-
-    /* ── Analyse Button ── */
-    .btn-analyse {
-      width: 100%; padding: 18px;
-      font-size: 18px; font-weight: 700;
-      font-family: var(--font-th);
-      background: var(--accent); color: #0a0a0f;
-      border: none; border-radius: 14px; cursor: pointer;
-      transition: transform 0.15s, box-shadow 0.15s, opacity 0.15s;
-      box-shadow: 0 4px 24px rgba(240,192,64,0.25);
-      letter-spacing: 1px; position: relative; overflow: hidden;
-    }
-    .btn-analyse::before {
-      content: ''; position: absolute; inset: 0;
-      background: linear-gradient(135deg, rgba(255,255,255,0.2), transparent);
-      pointer-events: none;
-    }
-    .btn-analyse:active { transform: scale(0.97); }
-    .btn-analyse:hover  { box-shadow: 0 6px 32px rgba(240,192,64,0.4); }
-    .btn-analyse:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
-
-    /* ── Loading ── */
-    .loading { display: none; text-align: center; padding: 40px 0; }
-    .loading.show { display: block; }
-    .spinner {
-      width: 44px; height: 44px;
-      border: 3px solid var(--border); border-top-color: var(--accent);
-      border-radius: 50%; margin: 0 auto 16px;
-      animation: spin 0.8s linear infinite;
-    }
-    .loading p { color: var(--muted); font-size: 14px; }
-
-    /* ── Results ── */
-    #results { display: none; }
-    #results.show { display: block; }
-
-    .mode-badge {
-      display: inline-flex; align-items: center; gap: 6px;
-      background: rgba(240,192,64,0.1);
-      border: 1px solid rgba(240,192,64,0.3);
-      border-radius: 99px; padding: 6px 16px;
-      font-family: var(--font-mono); font-size: 13px; color: var(--accent);
-      margin-bottom: 16px;
-    }
-
-    .summary-bar { display: flex; gap: 10px; margin-bottom: 16px; flex-wrap: wrap; }
-    .summary-chip {
-      background: var(--surface); border: 1px solid var(--border);
-      border-radius: 8px; padding: 7px 12px;
-      font-size: 11px; color: var(--muted); font-family: var(--font-mono);
-    }
-    .summary-chip span { color: var(--accent); font-weight: 700; font-size: 15px; }
-
-    /* Frequency */
-    .freq-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; }
-    .freq-cell {
-      background: var(--surface); border: 1px solid var(--border);
-      border-radius: 12px; padding: 12px 6px 8px; text-align: center;
-    }
-    .freq-cell.top { border-color: var(--accent); background: rgba(240,192,64,0.06); }
-    .freq-cell .digit { font-family: var(--font-mono); font-size: 24px; font-weight: 700; color: var(--text); line-height: 1; }
-    .freq-cell.top .digit { color: var(--accent); }
-    .freq-cell .count { font-size: 10px; color: var(--muted); margin-top: 3px; }
-    .freq-bar-wrap { margin-top: 6px; height: 4px; background: var(--border); border-radius: 99px; overflow: hidden; }
-    .freq-bar-fill { height: 100%; border-radius: 99px; background: var(--muted); transition: width 0.6s cubic-bezier(.34,1.56,.64,1); }
-    .freq-cell.top .freq-bar-fill { background: var(--accent); }
-
-    /* Top N */
-    .topN-row { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; }
-    .topN-badge {
-      width: 56px; height: 56px; border-radius: 50%;
-      background: var(--surface); border: 2px solid var(--accent);
-      display: flex; flex-direction: column; align-items: center; justify-content: center;
-      font-family: var(--font-mono); position: relative;
-    }
-    .topN-badge .rank {
-      position: absolute; top: -8px; right: -4px;
-      background: var(--accent); color: #0a0a0f;
-      font-size: 9px; font-weight: 700; padding: 1px 5px; border-radius: 99px;
-    }
-    .topN-badge .num { font-size: 22px; font-weight: 700; color: var(--accent); }
-    .topN-badge .wt  { font-size: 9px; color: var(--muted); }
-
-    /* Combos */
-    .combo-wrap { display: flex; flex-wrap: wrap; gap: 8px; }
-    .combo-tag {
-      background: var(--surface); border: 1px solid var(--border);
-      border-radius: 8px; padding: 10px 14px;
-      font-family: var(--font-mono); font-size: 18px; font-weight: 700;
-      color: var(--accent3); letter-spacing: 3px;
-    }
-
-    /* Suggestions */
-    .suggestion-list { display: flex; flex-direction: column; gap: 10px; }
-    .suggestion-item {
-      display: flex; align-items: center; gap: 14px;
-      background: var(--surface); border: 1px solid var(--border);
-      border-radius: 12px; padding: 14px 18px;
-      animation: fadeUp 0.4s ease both;
-    }
-    .suggestion-item:nth-child(1){animation-delay:.05s}
-    .suggestion-item:nth-child(2){animation-delay:.10s}
-    .suggestion-item:nth-child(3){animation-delay:.15s}
-    .suggestion-item:nth-child(4){animation-delay:.20s}
-    .suggestion-item:nth-child(5){animation-delay:.25s}
-    .suggestion-num { font-family: var(--font-mono); font-size: 26px; font-weight: 700; color: var(--text); letter-spacing: 5px; flex: 1; }
-    .suggestion-score { font-family: var(--font-mono); font-size: 11px; color: var(--muted); text-align: right; }
-    .suggestion-score .score-val { display: block; font-size: 17px; color: var(--accent3); font-weight: 700; }
-
-    .section-divider { border: none; border-top: 1px solid var(--border); margin: 4px 0 14px; }
-    .disclaimer { text-align: center; font-size: 11px; color: var(--muted); margin-top: 32px; line-height: 1.8; opacity: 0.6; }
-
-    @keyframes fadeDown { from{opacity:0;transform:translateY(-16px)} to{opacity:1;transform:translateY(0)} }
-    @keyframes fadeUp   { from{opacity:0;transform:translateY(20px)}  to{opacity:1;transform:translateY(0)} }
-    @keyframes spin     { to{transform:rotate(360deg)} }
-    @keyframes shake    { 0%,100%{transform:translateX(0)} 25%{transform:translateX(-6px)} 75%{transform:translateX(6px)} }
-  </style>
+  <link rel="stylesheet" href="style.css" />
 </head>
 <body>
+
+<!-- ══════ NAVBAR ══════ -->
+<nav class="navbar" id="mainNav">
+  <div class="nav-inner">
+    <div class="nav-brand">
+      <span class="nav-logo">🎯</span>
+      <span class="nav-title">LOTTERY <span class="nav-title-accent">ANALYZER</span></span>
+    </div>
+    <div class="nav-right">
+      <div class="nav-tabs">
+        <button class="nav-tab active" id="tab-lao" onclick="switchPage('lao')">
+          <span class="nav-tab-icon">🇱🇦</span>
+          <span class="nav-tab-label">หวยลาว</span>
+        </button>
+        <button class="nav-tab" id="tab-nikkei" onclick="switchPage('nikkei')">
+          <span class="nav-tab-icon">🇯🇵</span>
+          <span class="nav-tab-label">นิเคอิ</span>
+        </button>
+      </div>
+      <button class="theme-toggle" id="themeToggle" onclick="toggleTheme()" title="สลับ Dark/Light mode">🌙</button>
+    </div>
+  </div>
+</nav>
+
+<!-- ══════ PAGE: หวยลาว ══════ -->
+<div class="page-container" id="page-lao">
 <div class="container">
 
-  <!-- Header -->
   <header class="header">
-    <p class="header-eyebrow">LOTTERY ANALYZER</p>
-    <h1>วิเคราะห์หวย</h1>
-    <p class="header-sub">เลือกประเภท → ใส่เลขย้อนหลัง → วิเคราะห์</p>
+    <p class="eyebrow">LOTTERY ANALYZER · 10 FORMULAS</p>
+    <h1>วิเคราะห์หวยลาว</h1>
+    <p class="header-sub">วิเคราะห์ 10 มุมมอง · หาเลขร้อน-เลขค้าง · สรุปเลขแนะนำ</p>
   </header>
 
-  <!-- Mode Selector -->
-  <div class="card" style="animation-delay:0.05s">
+  <!-- Mode -->
+  <div class="card" style="animation-delay:.05s">
     <p class="card-title">🎯 เลือกประเภทหวย</p>
     <div class="mode-grid">
       <button class="mode-btn active" data-mode="6" onclick="selectMode(6)">6<small>ตัว</small></button>
@@ -297,27 +57,18 @@
   </div>
 
   <!-- Input -->
-  <div class="card" style="animation-delay:0.1s">
+  <div class="card" style="animation-delay:.1s">
     <p class="card-title">📋 ข้อมูลย้อนหลัง</p>
-    <textarea id="inputData"
-      placeholder="ใส่เลข 6 หลัก ทีละบรรทัด เช่น&#10;045292&#10;897768&#10;123456"
-      spellcheck="false"></textarea>
-    <p class="input-hint">
-      • ใส่เลข <strong style="color:var(--accent)">6 หลัก</strong> ต่อบรรทัดเสมอ (ข้อมูลต้นทาง)<br>
-      • ระบบจะตัดมาวิเคราะห์ตามประเภทที่เลือก เช่น เลือก "3 ตัว" จะใช้ 3 หลักท้าย
-    </p>
+    <textarea id="inputData" placeholder="ใส่เลข 6 หลัก ทีละบรรทัด เช่น&#10;374260&#10;797032&#10;749193" spellcheck="false"></textarea>
+    <p class="input-hint">• ใส่เลข <strong style="color:var(--accent)">6 หลัก</strong> ต่อบรรทัด (ข้อมูลต้นทาง)<br>• ระบบวิเคราะห์ด้วย 10 สูตรสถิติอัตโนมัติ</p>
     <div class="alert" id="errorAlert"></div>
   </div>
 
-  <!-- Button -->
-  <button class="btn-analyse" id="btnAnalyse" onclick="runAnalysis()">
-    🔍 วิเคราะห์เลข
-  </button>
+  <button class="btn-analyse" id="btnAnalyse" onclick="runAnalysis()">🔍 วิเคราะห์ด้วย 10 สูตร</button>
 
-  <!-- Loading -->
   <div class="loading" id="loading">
     <div class="spinner"></div>
-    <p>กำลังคำนวณ...</p>
+    <p>กำลังคำนวณ 10 สูตร...</p>
   </div>
 
   <!-- Results -->
@@ -325,28 +76,98 @@
     <div class="mode-badge" id="modeBadge"></div>
     <div class="summary-bar" id="summaryBar"></div>
 
+    <!-- Frequency -->
     <div class="card">
-      <p class="card-title">📊 ความถี่ตัวเลข 0–9</p>
-      <hr class="section-divider" />
+      <p class="card-title">📊 เลขไหนออกมาบ้าง</p>
+      <p style="font-size:11px;color:var(--muted);margin-bottom:8px">นับว่าแต่ละตัวเลข 0-9 ออกมากี่ครั้งจากข้อมูลทั้งหมด</p>
+      <hr class="section-divider"/>
       <div class="freq-grid" id="freqGrid"></div>
     </div>
 
+    <!-- Decay Top N -->
     <div class="card">
       <p class="card-title" id="topNTitle">⭐ เลขเด่น 5 อันดับ</p>
-      <hr class="section-divider" />
+      <p style="font-size:11px;color:var(--muted);margin-bottom:8px">เลขที่ออกบ่อย โดยเน้น <strong style="color:var(--accent)">งวดล่าสุดมากกว่างวดเก่า</strong> — ยิ่งออกถี่และออกใหม่ ยิ่งได้คะแนนสูง</p>
+      <hr class="section-divider"/>
       <div class="topN-row" id="topNRow"></div>
     </div>
 
+    <!-- Hot / Cold -->
+    <div class="card">
+      <p class="card-title">🌡️ เลขร้อน vs เลขค้าง</p>
+      <p style="font-size:11px;color:var(--muted);margin-bottom:8px">🔥 <strong style="color:var(--accent2)">เลขร้อน</strong> = ออกบ่อยใน 15 งวดล่าสุด &nbsp;|&nbsp; ❄️ <strong style="color:#5ca3e0">เลขค้าง</strong> = ไม่ออกมานานที่สุด อาจถึงเวลาออกแล้ว</p>
+      <hr class="section-divider"/>
+      <div id="hotColdSection"></div>
+    </div>
+
+    <!-- Position Heatmap -->
+    <div class="card" id="posCard">
+      <p class="card-title">📍 เลขตามตำแหน่ง</p>
+      <p style="font-size:11px;color:var(--muted);margin-bottom:8px">แต่ละ<strong style="color:var(--accent4)">ตำแหน่ง</strong>ของหวย (ล้าน แสน หมื่น...) มักออกเลขอะไรบ่อยที่สุด</p>
+      <hr class="section-divider"/>
+      <div id="posTableWrap" style="overflow-x:auto"></div>
+    </div>
+
+    <!-- Pair Co-occurrence -->
+    <div class="card" id="pairCard">
+      <p class="card-title">🔗 เลขที่มักออกคู่กัน</p>
+      <p style="font-size:11px;color:var(--muted);margin-bottom:8px">คู่เลขไหนมักปรากฏอยู่ใน<strong style="color:var(--accent4)">งวดเดียวกัน</strong>บ่อยที่สุด</p>
+      <hr class="section-divider"/>
+      <div class="pair-grid" id="pairGrid"></div>
+    </div>
+
+    <!-- Cycle Detection -->
+    <div class="card">
+      <p class="card-title">🔄 รอบการออกของแต่ละเลข</p>
+      <p style="font-size:11px;color:var(--muted);margin-bottom:8px">แต่ละเลขมักออกทุกกี่งวด และ<strong style="color:var(--accent3)">อีกกี่งวด</strong>ถึงจะถึงรอบออกอีกครั้ง</p>
+      <hr class="section-divider"/>
+      <div class="cycle-list" id="cycleList"></div>
+    </div>
+
+    <!-- Markov Chain -->
+    <div class="card">
+      <p class="card-title">🔀 เลขที่มักตามกัน</p>
+      <hr class="section-divider"/>
+      <p style="font-size:11px;color:var(--muted);margin-bottom:10px">ดูจากประวัติย้อนหลัง — หลังจากเลขในงวดล่าสุดออก <strong style="color:var(--accent)">งวดถัดไปมักตามด้วยเลขอะไร</strong></p>
+      <div id="markovSection"></div>
+    </div>
+
+    <!-- Z-Score + Trend -->
+    <div class="card">
+      <p class="card-title">📈 เลขที่ออกผิดปกติ + แนวโน้ม</p>
+      <hr class="section-divider"/>
+      <p style="font-size:11px;color:var(--muted);margin-bottom:10px">
+        <span style="color:#5ca3e0">■ สีฟ้า</span> = ออกน้อยกว่าปกติ (เลขค้าง น่าจับตา) &nbsp;
+        <span style="color:var(--accent2)">■ สีแดง</span> = ออกมากกว่าปกติ &nbsp;
+        <strong>↑</strong> กำลังออกบ่อยขึ้น &nbsp; <strong>↓</strong> ออกน้อยลง &nbsp; <strong>→</strong> ทรงตัว
+      </p>
+      <div id="zScoreSection"></div>
+    </div>
+
+    <!-- Digit Sum -->
+    <div class="card">
+      <p class="card-title">🔢 ผลรวมตัวเลข</p>
+      <p style="font-size:11px;color:var(--muted);margin-bottom:8px">บวกตัวเลขทุกหลักของแต่ละงวดเข้าด้วยกัน — ดูว่าผลรวมช่วงไหน<strong style="color:var(--accent)">ออกบ่อยที่สุด</strong></p>
+      <hr class="section-divider"/>
+      <div id="digitSumSection"></div>
+    </div>
+
+    <!-- Combo (Decay pairs) -->
     <div class="card" id="comboCard">
-      <p class="card-title" id="comboTitle">🎯 เลขคู่แนะนำ</p>
-      <hr class="section-divider" />
+      <p class="card-title">🎯 เลขคู่แนะนำ</p>
+      <p style="font-size:11px;color:var(--muted);margin-bottom:8px">จับคู่เลขเด่นมาเป็นเลข 2 ตัว เหมาะสำหรับการแทงเลขท้าย</p>
+      <hr class="section-divider"/>
       <div class="combo-wrap" id="comboWrap"></div>
     </div>
 
+    <!-- Composite Score Suggestions -->
     <div class="card">
-      <p class="card-title" id="suggTitle">🏆 เลขแนะนำ</p>
-      <hr class="section-divider" />
-      <div class="suggestion-list" id="suggestionList"></div>
+      <p class="card-title">🏆 เลขแนะนำ — สรุปจากทุกสูตร</p>
+      <hr class="section-divider"/>
+      <p style="font-size:11px;color:var(--muted);margin-bottom:12px">
+        รวมผลจากทั้ง 10 วิธีวิเคราะห์ — เลขที่ติดอันดับ 1 คือเลขที่ <strong style="color:var(--accent3)">ทุกสูตรเห็นตรงกัน</strong>ว่ามีโอกาสออกมากที่สุด
+      </p>
+      <div class="composite-list" id="compositeList"></div>
     </div>
   </section>
 
@@ -355,283 +176,144 @@
     ไม่สามารถรับประกันผลลัพธ์ใดๆ ได้
   </p>
 </div>
+</div>
 
+<!-- ══════ PAGE: นิเคอิ ══════ -->
+<div class="page-container" id="page-nikkei" style="display:none">
+<div class="container">
+
+  <header class="header">
+    <p class="eyebrow">NIKKEI ANALYZER · 🇯🇵</p>
+    <h1>คำนวณหุ้นนิเคอิ</h1>
+    <p class="header-sub">วิเคราะห์บน 3 ตัว · ล่าง 2 ตัว · คาดเดาชุดถัดไป</p>
+  </header>
+
+  <!-- Info Banner -->
+  <div class="nk-banner">
+    <div class="nk-banner-icon">⏱️</div>
+    <div class="nk-banner-text">
+      <strong>นิเคอิเช้า VIP</strong> ออกเวลา <strong>09:05 น.</strong>
+    </div>
+    <div class="nk-banner-badge">เช้า</div>
+  </div>
+
+  <!-- Input -->
+  <div class="card" style="animation-delay:.05s">
+    <p class="card-title">📋 ข้อมูลย้อนหลัง นิเคอิ</p>
+    <p style="font-size:11px;color:var(--muted);margin-bottom:10px">
+      รูปแบบ: <code class="code-inline">วันที่,บน3ตัว,ล่าง2ตัว</code> หรือ <code class="code-inline">บน3-ล่าง2</code> ทีละบรรทัด
+    </p>
+    <textarea id="nkInput" rows="14" spellcheck="false" placeholder="25/04/69,924,09&#10;26/04/69,572,32&#10;..."></textarea>
+    <div class="alert" id="nkError"></div>
+  </div>
+
+  <button class="btn-analyse" id="btnNkAnalyse" onclick="runNikkei()" style="background:linear-gradient(135deg,#e05c5c,#f0c040)">
+    🔍 วิเคราะห์นิเคอิ
+  </button>
+
+  <div class="loading" id="nkLoading">
+    <div class="spinner"></div>
+    <p>กำลังคำนวณสถิตินิเคอิ...</p>
+  </div>
+
+  <!-- Results -->
+  <div id="nkResults" style="display:none;opacity:0;transition:opacity .4s">
+
+    <!-- History -->
+    <div class="card">
+      <p class="card-title">📅 ประวัติการออก</p>
+      <hr class="section-divider"/>
+      <div id="nkHistoryWrap" class="nk-history-list"></div>
+    </div>
+
+    <!-- Positional Heatmap (v2) -->
+    <div class="card">
+      <p class="card-title">🔢 เลขเด่นแต่ละหลัก</p>
+      <p style="font-size:11px;color:var(--muted);margin-bottom:8px">หลักร้อย หลักสิบ หลักหน่วย — แต่ละหลักมีเลขที่ออกบ่อยต่างกัน ดูเพื่อประกอบเลขที่น่าจะออก</p>
+      <hr class="section-divider"/>
+      <div id="nkPosHeatmap"></div>
+    </div>
+
+    <!-- Hot / Cold -->
+    <div class="card">
+      <p class="card-title">🌡️ เลขร้อน vs เลขค้าง</p>
+      <hr class="section-divider"/>
+      <div id="nkHotCold"></div>
+    </div>
+
+    <!-- Sum Pattern (v2) -->
+    <div class="card">
+      <p class="card-title">🔢 ผลรวมหลัก + คาดการณ์</p>
+      <p style="font-size:11px;color:var(--muted);margin-bottom:8px">ผลรวมหลักของบน 3 และล่าง 2 — ช่วยกรองเลขที่น่าจะออก</p>
+      <hr class="section-divider"/>
+      <div id="nkSumPattern"></div>
+    </div>
+
+    <!-- Positional Markov (v2) -->
+    <div class="card">
+      <p class="card-title">🔀 Positional Markov</p>
+      <hr class="section-divider"/>
+      <p style="font-size:11px;color:var(--muted);margin-bottom:10px">แต่ละตำแหน่งแยกกัน — หลักร้อยงวดนี้ → หลักร้อยงวดหน้า มักเป็นเลขอะไร</p>
+      <div id="nkMarkov"></div>
+    </div>
+
+    <!-- Predictions (v2) -->
+    <div class="card nk-pred-card">
+      <p class="card-title">🏆 เลขแนะนำ — Positional Composite</p>
+      <hr class="section-divider"/>
+      <p style="font-size:11px;color:var(--muted);margin-bottom:12px">
+        รวมจาก Positional Decay · Positional Markov · Digit Sum — พร้อมเลขกระจก
+      </p>
+      <div id="nkPredictions"></div>
+    </div>
+
+  </div>
+
+  <p class="disclaimer">
+    ⚠️ จัดทำเพื่อความบันเทิงและการศึกษาด้านสถิติเท่านั้น<br>
+    ไม่สามารถรับประกันผลลัพธ์ใดๆ ได้
+  </p>
+</div>
+</div>
+
+<script src="main.js"></script>
+<script src="nikkei.js"></script>
 <script>
-  /* ══════════════════════
-     STATE
-  ══════════════════════ */
-  let currentMode = 6;
+/* ── Page Switcher ── */
+function switchPage(page) {
+  document.getElementById('page-lao').style.display = page === 'lao' ? '' : 'none';
+  document.getElementById('page-nikkei').style.display = page === 'nikkei' ? '' : 'none';
+  document.getElementById('tab-lao').classList.toggle('active', page === 'lao');
+  document.getElementById('tab-nikkei').classList.toggle('active', page === 'nikkei');
+  if (page === 'nikkei') initNikkei();
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
 
-  /* ══════════════════════
-     MODE SELECTION
-  ══════════════════════ */
-  function selectMode(n) {
-    currentMode = n;
-    document.querySelectorAll('.mode-btn').forEach(b => {
-      b.classList.toggle('active', parseInt(b.dataset.mode) === n);
-    });
-    // ซ่อนผลเดิมเมื่อเปลี่ยนโหมด
-    document.getElementById('results').className = '';
+/* ── Theme Toggle ── */
+function toggleTheme() {
+  const html = document.documentElement;
+  const btn = document.getElementById('themeToggle');
+  const isLight = html.getAttribute('data-theme') === 'light';
+  if (isLight) {
+    html.removeAttribute('data-theme');
+    btn.textContent = '🌙';
+    localStorage.setItem('theme', 'dark');
+  } else {
+    html.setAttribute('data-theme', 'light');
+    btn.textContent = '☀️';
+    localStorage.setItem('theme', 'light');
   }
+}
 
-  /* ══════════════════════
-     PARSE & VALIDATE
-  ══════════════════════ */
-  function parseInput(raw) {
-    return raw.split('\n')
-      .map(l => l.trim().replace(/\s+/g,''))
-      .filter(l => l.length > 0);
+/* ── Init theme from localStorage ── */
+(function() {
+  const saved = localStorage.getItem('theme');
+  const btn = document.getElementById('themeToggle');
+  if (saved === 'light') {
+    document.documentElement.setAttribute('data-theme', 'light');
+    if (btn) btn.textContent = '☀️';
   }
-
-  // ต้องเป็น 6 หลักเสมอ (ข้อมูลดิบ)
-  function validateLines(lines) {
-    const bad = [];
-    lines.forEach((l, i) => {
-      if (!/^\d{6}$/.test(l)) bad.push({ line: i+1, value: l });
-    });
-    return bad;
-  }
-
-  /* ══════════════════════
-     EXTRACT BY MODE
-     6 ตัว → ใช้ทั้งหมด   045292 → 045292
-     5 ตัว → 5 หลักแรก   045292 → 04529
-     4 ตัว → 4 หลักแรก   045292 → 0452
-     3 ตัว → 3 หลักท้าย  045292 → 292
-     2 ตัว → 2 หลักท้าย  045292 → 92
-  ══════════════════════ */
-  function extractByMode(s, mode) {
-    switch(mode) {
-      case 6: return s;
-      case 5: return s.slice(0, 5);
-      case 4: return s.slice(0, 4);
-      case 3: return s.slice(-3);
-      case 2: return s.slice(-2);
-      default: return s;
-    }
-  }
-
-  /* ══════════════════════
-     ANALYSIS CORE
-  ══════════════════════ */
-
-  // นับความถี่ raw
-  function countFrequency(list) {
-    const freq = {};
-    for (let d=0;d<=9;d++) freq[d]=0;
-    list.forEach(num => { for(const ch of num) freq[parseInt(ch)]++; });
-    return freq;
-  }
-
-  // Weighted score (ล่าสุด = weight สูงสุด)
-  function weightedFrequency(list) {
-    const scores = {};
-    for (let d=0;d<=9;d++) scores[d]=0;
-    list.forEach((num, idx) => {
-      const w = idx + 1;
-      for(const ch of num) scores[parseInt(ch)] += w;
-    });
-    return scores;
-  }
-
-  // Top N digits by score
-  function getTopN(scores, freq, n) {
-    return Object.entries(scores)
-      .map(([d,s]) => ({ digit:parseInt(d), score:s, freq:freq[d] }))
-      .sort((a,b) => b.score - a.score)
-      .slice(0, n);
-  }
-
-  // 2-digit combos จาก top digits
-  function getTwoCombos(topDigits) {
-    const combos = [];
-    const d = topDigits.map(t => t.digit);
-    for(let i=0;i<d.length;i++)
-      for(let j=i+1;j<d.length;j++)
-        combos.push(`${d[i]}${d[j]}`);
-    return combos.slice(0,10);
-  }
-
-  // สร้าง N-digit suggestions
-  function getSuggestions(scores, mode) {
-    const sorted = Object.entries(scores)
-      .sort((a,b) => b[1]-a[1])
-      .map(([d]) => parseInt(d));
-
-    // pattern = index เข้า sorted[] (repeat ได้)
-    const patternMap = {
-      6: [[0,0,1,1,2,3],[0,1,2,3,4,0],[0,0,1,2,3,4],[0,1,1,2,2,3],[0,1,2,3,4,4]],
-      5: [[0,0,1,1,2],[0,1,2,3,4],[0,0,1,2,3],[0,1,1,2,2],[0,1,2,3,3]],
-      4: [[0,0,1,1],[0,1,2,3],[0,0,1,2],[0,1,1,2],[0,1,2,2]],
-      3: [[0,1,2],[0,0,1],[0,1,1],[0,1,3],[0,2,3]],
-      2: [[0,1],[0,2],[1,2],[0,3],[1,3]],
-    };
-
-    const patterns = patternMap[mode] || patternMap[6];
-    const suggestions = [];
-    patterns.forEach(pat => {
-      const num = pat.map(i => sorted[i] ?? sorted[0]).join('');
-      if (!suggestions.includes(num)) suggestions.push(num);
-    });
-    return suggestions.slice(0,5);
-  }
-
-  function suggestionScore(numStr, scores) {
-    return [...numStr].reduce((s,d) => s + (scores[parseInt(d)]||0), 0);
-  }
-
-  /* ══════════════════════
-     RENDER
-  ══════════════════════ */
-  const MEDALS = ['🥇','🥈','🥉','④','⑤'];
-  const MODE_LABEL = {6:'หกตัว', 5:'ห้าตัว', 4:'สี่ตัว', 3:'สามตัว', 2:'สองตัว'};
-  const MODE_EXTRACT_DESC = {
-    6:'ใช้ทั้ง 6 หลัก',
-    5:'5 หลักแรก',
-    4:'4 หลักแรก',
-    3:'3 หลักท้าย',
-    2:'2 หลักท้าย'
-  };
-
-  function renderModeBadge(mode, count) {
-    document.getElementById('modeBadge').innerHTML =
-      `🎯 ${MODE_LABEL[mode]} &nbsp;·&nbsp; ${MODE_EXTRACT_DESC[mode]} &nbsp;·&nbsp; ${count} ชุด`;
-  }
-
-  function renderSummary(lines, mode) {
-    document.getElementById('summaryBar').innerHTML = `
-      <div class="summary-chip">ชุดข้อมูล <span>${lines.length}</span></div>
-      <div class="summary-chip">ตัวเลขที่วิเคราะห์ <span>${lines.length * mode}</span></div>
-      <div class="summary-chip">น้ำหนักล่าสุด <span>${lines.length}×</span></div>
-    `;
-  }
-
-  function renderFrequency(freq, topDigits, maxFreq) {
-    const topSet = new Set(topDigits.map(t=>t.digit));
-    const grid = document.getElementById('freqGrid');
-    grid.innerHTML = '';
-    for(let d=0;d<=9;d++) {
-      const isTop = topSet.has(d);
-      const pct = maxFreq>0 ? Math.round((freq[d]/maxFreq)*100) : 0;
-      grid.innerHTML += `
-        <div class="freq-cell ${isTop?'top':''}">
-          <div class="digit">${d}</div>
-          <div class="count">${freq[d]}ครั้ง</div>
-          <div class="freq-bar-wrap">
-            <div class="freq-bar-fill" style="width:0%" data-pct="${pct}"></div>
-          </div>
-        </div>`;
-    }
-    requestAnimationFrame(() => {
-      document.querySelectorAll('.freq-bar-fill').forEach(el => {
-        el.style.width = el.dataset.pct + '%';
-      });
-    });
-  }
-
-  function renderTopN(topN) {
-    document.getElementById('topNTitle').textContent = `⭐ เลขเด่น ${topN.length} อันดับ`;
-    document.getElementById('topNRow').innerHTML = topN.map((t,i) => `
-      <div class="topN-badge">
-        <span class="rank">${MEDALS[i]}</span>
-        <span class="num">${t.digit}</span>
-        <span class="wt">${t.score}</span>
-      </div>`).join('');
-  }
-
-  function renderCombos(topN, mode) {
-    const card = document.getElementById('comboCard');
-    if (mode === 2) { card.style.display='none'; return; }
-    card.style.display = '';
-    document.getElementById('comboTitle').textContent = `🎯 เลขคู่แนะนำ (2 ตัว)`;
-    const combos = getTwoCombos(topN);
-    document.getElementById('comboWrap').innerHTML =
-      combos.map(c => `<div class="combo-tag">${c}</div>`).join('');
-  }
-
-  function renderSuggestions(suggestions, scores, mode) {
-    document.getElementById('suggTitle').textContent = `🏆 เลข${MODE_LABEL[mode]}แนะนำ`;
-    document.getElementById('suggestionList').innerHTML = suggestions.map(num => {
-      const sc = suggestionScore(num, scores);
-      return `
-        <div class="suggestion-item">
-          <span class="suggestion-num">${num}</span>
-          <div class="suggestion-score">
-            <span class="score-val">${sc}</span>คะแนน
-          </div>
-        </div>`;
-    }).join('');
-  }
-
-  /* ══════════════════════
-     UI HELPERS
-  ══════════════════════ */
-  function showError(msg) {
-    const el = document.getElementById('errorAlert');
-    el.innerHTML = msg; el.className = 'alert show';
-  }
-  function clearError() { document.getElementById('errorAlert').className='alert'; }
-  function setLoading(on) {
-    document.getElementById('loading').className = on ? 'loading show' : 'loading';
-    document.getElementById('btnAnalyse').disabled = on;
-  }
-  function showResults() { document.getElementById('results').className='show'; }
-
-  /* ══════════════════════
-     MAIN
-  ══════════════════════ */
-  function runAnalysis() {
-    clearError();
-    document.getElementById('results').className = '';
-
-    const raw   = document.getElementById('inputData').value;
-    const lines = parseInput(raw);
-    const mode  = currentMode;
-
-    if (lines.length === 0) {
-      showError('⚠️ กรุณากรอกเลขหวยอย่างน้อย 1 ชุด'); return;
-    }
-
-    const errors = validateLines(lines);
-    if (errors.length > 0) {
-      const detail = errors.slice(0,3)
-        .map(e => `บรรทัดที่ ${e.line}: "<strong>${e.value||(e.value===''?'(ว่าง)':e.value)}</strong>"`)
-        .join('<br>');
-      showError(`⚠️ ต้องเป็นตัวเลข 6 หลักต่อบรรทัด<br>${detail}${errors.length>3?`<br>...และอีก ${errors.length-3} รายการ`:''}`);
-      return;
-    }
-
-    setLoading(true);
-    setTimeout(() => {
-      try {
-        // ตัดเลขตามโหมด
-        const extracted = lines.map(l => extractByMode(l, mode));
-
-        // คำนวณ
-        const freq    = countFrequency(extracted);
-        const scores  = weightedFrequency(extracted);
-        const topN    = getTopN(scores, freq, 5);
-        const maxFreq = Math.max(...Object.values(freq));
-        const sugg    = getSuggestions(scores, mode);
-
-        // Render
-        renderModeBadge(mode, lines.length);
-        renderSummary(lines, mode);
-        renderFrequency(freq, topN, maxFreq);
-        renderTopN(topN);
-        renderCombos(topN, mode);
-        renderSuggestions(sugg, scores, mode);
-
-        setLoading(false);
-        showResults();
-        document.getElementById('results').scrollIntoView({ behavior:'smooth', block:'start' });
-
-      } catch(e) {
-        setLoading(false);
-        showError('เกิดข้อผิดพลาด: ' + e.message);
-      }
-    }, 600);
-  }
+})();
 </script>
 </body>
 </html>
